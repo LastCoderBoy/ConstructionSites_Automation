@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ==================== Parent ==================== -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/> <!-- Resolves parent from Maven Central, not local FS -->
+    </parent>
+
+    <!-- ==================== Project Identity ==================== -->
+    <groupId>com.jk</groupId>
+    <artifactId>QurilishNazorat</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>QurilishNazorat</name>
+    <description>
+        Novostroyka API — REST Assured automation test suite
+        for the Tashkent City Hokimiyat construction catalogue public API.
+    </description>
+
+    <!-- ==================== Version Properties ==================== -->
+    <properties>
+        <!-- Java version -->
+        <java.version>21</java.version>
+
+        <!-- Test framework versions -->
+        <rest-assured.version>5.5.5</rest-assured.version>
+        <assertj.version>3.27.3</assertj.version>
+        <jackson.version>2.19.1</jackson.version>
+        <junit-jupiter.version>5.12.2</junit-jupiter.version>
+        <allure.version>2.29.1</allure.version>
+
+        <!-- Plugin versions -->
+        <maven-surefire.version>3.5.3</maven-surefire.version>
+        <maven-failsafe.version>3.5.3</maven-failsafe.version>
+        <groovy.version>4.0.28</groovy.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- ================================================ -->
+        <!--   APPLICATION — Runtime                          -->
+        <!-- ================================================ -->
+
+        <!-- Spring REST Client (RestClient / WebClient support) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
+        </dependency>
+
+        <!-- Spring Web MVC (embedded Tomcat + DispatcherServlet) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <!-- DevTools — hot-reload for development (excluded from final jar) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Lombok — reduces boilerplate (@Data, @Builder, @Slf4j, etc.) -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- ================================================ -->
+        <!--   TESTING — Core                                 -->
+        <!-- ================================================ -->
+
+        <!-- Spring Boot test slice — includes JUnit 5, Mockito, AssertJ, etc. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <!-- Exclude JUnit 4 / Vintage so only JUnit 5 Jupiter is active -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- JUnit 5 Jupiter API — @Test, @BeforeAll, @ParameterizedTest, etc. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit 5 Jupiter Engine — runs the tests -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit 5 Params — @CsvSource, @MethodSource, @ValueSource, etc. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ================================================ -->
+        <!--   TESTING — REST Assured (API automation)        -->
+        <!-- ================================================ -->
+
+        <!-- REST Assured core — fluent HTTP request/response DSL -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>${rest-assured.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- REST Assured — Jackson ObjectMapper integration for JSON parsing -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>json-path</artifactId>
+            <version>${rest-assured.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- REST Assured — JSONPath/XmlPath schema validator -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>${rest-assured.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ================================================ -->
+        <!--   TESTING — Jackson (JSON serialisation)         -->
+        <!-- ================================================ -->
+
+        <!-- Jackson Databind — serialize/deserialize response bodies to POJOs -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Jackson Java Time module — handles Instant, LocalDate, ZonedDateTime -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>${jackson.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ================================================ -->
+        <!--   TESTING — Assertions                           -->
+        <!-- ================================================ -->
+
+        <!-- AssertJ — fluent, readable assertions (assertThat(...).isEqualTo(...)) -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ================================================ -->
+        <!--   TESTING — Reporting (Allure)                   -->
+        <!-- ================================================ -->
+
+        <!-- Allure JUnit 5 integration — rich HTML test reports with steps/attachments -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-junit5</artifactId>
+            <version>${allure.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Allure REST Assured integration — auto-attaches request/response to report -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-rest-assured</artifactId>
+            <version>${allure.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>3.0.2</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.groovy</groupId>
+                <artifactId>groovy-bom</artifactId>
+                <version>${groovy.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- ================================================ -->
+    <!--   BUILD                                          -->
+    <!-- ================================================ -->
+    <build>
+        <plugins>
+
+            <!-- Spring Boot Maven Plugin — build executable jar/war -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Exclude Lombok and DevTools from the packaged artifact -->
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Compiler Plugin — configure Lombok annotation processing -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>default-testCompile</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <configuration>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Maven Surefire Plugin — runs unit tests (src/test) with JUnit 5 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire.version}</version>
+                <configuration>
+                    <!-- Enable JUnit 5 provider -->
+                    <useModulePath>false</useModulePath>
+                    <argLine>-Dfile.encoding=UTF-8 -Dallure.results.directory=${project.build.directory}/allure-results</argLine>
+                </configuration>
+            </plugin>
+
+            <!-- Allure Maven Plugin — generates Allure reports -->
+            <plugin>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-maven</artifactId>
+                <version>2.12.0</version>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>
