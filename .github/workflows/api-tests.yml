@@ -100,10 +100,55 @@ jobs:
             echo "Using BASE_URL from repository secret"
           fi
 
+      # Health check — verify the API is reachable before running 109 tests.
+      # If the backend is down (502) we fail here immediately with a clear
+      # message instead of seeing 109 cryptic content-type / status-code errors.
+      # Retries every 10s for up to 2 minutes (12 attempts).
+      - name: API health check (wait for server to be ready)
+        run: |
+          HEALTH_URL="${BASE_URL}/api/v1/districts/summary"
+          MAX_RETRIES=12
+          RETRY_INTERVAL=10
+          attempt=1
+
+          echo "Checking API health at: $HEALTH_URL"
+
+          until [ $attempt -gt $MAX_RETRIES ]; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Accept: application/json" \
+              --connect-timeout 5 \
+              --max-time 10 \
+              "$HEALTH_URL")
+
+            echo "Attempt $attempt/$MAX_RETRIES — HTTP $STATUS"
+
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "304" ]; then
+              echo "API is healthy (HTTP $STATUS). Proceeding with tests."
+              exit 0
+            fi
+
+            if [ "$STATUS" = "403" ]; then
+              echo "ERROR: API returned 403 Forbidden."
+              echo "This runner's IP is geo-blocked. Ensure this job runs on a UZ-based self-hosted runner."
+              exit 1
+            fi
+
+            echo "API not ready yet (HTTP $STATUS). Retrying in ${RETRY_INTERVAL}s..."
+            sleep $RETRY_INTERVAL
+            attempt=$((attempt + 1))
+          done
+
+          echo "ERROR: API did not become healthy after $((MAX_RETRIES * RETRY_INTERVAL))s."
+          echo "Last HTTP status: $STATUS — backend (nginx upstream) appears to be down."
+          exit 1
+        env:
+          BASE_URL: ${{ env.BASE_URL }}
+
       - name: Run REST Assured test suite
         run: ./mvnw test --no-transfer-progress
         env:
           BASE_URL: ${{ env.BASE_URL }}
+
 
       # Upload raw Allure results — always (even on failure)
       - name: Upload Allure results
