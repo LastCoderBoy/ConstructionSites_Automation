@@ -1,0 +1,184 @@
+name: API Test Suite — QurilishNazorat
+
+on:
+  # Run on every push to main, master and develop
+  push:
+    branches:
+      - main
+      - master
+      - develop
+
+  # Run on every pull request targeting main, master or develop
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+
+  # Allow manual trigger from the GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Target API base URL (leave blank to use secret)"
+        required: false
+        default: ""
+
+# Cancel any in-progress run on the same branch when a new one is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "25"
+  JAVA_DISTRIBUTION: "temurin"
+
+jobs:
+  # ============================================================
+  #  JOB 1 — Run the full REST Assured test suite
+  # ============================================================
+  test:
+    name: Run API Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # --------------------------------------------------------
+      # Checkout the repository
+      # --------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------------
+      # Set up JDK
+      # --------------------------------------------------------
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven           # caches ~/.m2 between runs
+
+      # --------------------------------------------------------
+      # Resolve the target URL
+      #    Priority: workflow_dispatch input → BASE_URL secret
+      # --------------------------------------------------------
+      - name: Resolve target base URL
+        id: resolve_url
+        run: |
+          INPUT_URL="${{ github.event.inputs.base_url }}"
+          if [ -n "$INPUT_URL" ]; then
+            echo "BASE_URL=$INPUT_URL" >> $GITHUB_ENV
+            echo "Using manually provided URL: $INPUT_URL"
+          else
+            echo "BASE_URL=${{ secrets.BASE_URL }}" >> $GITHUB_ENV
+            echo "Using BASE_URL from repository secret"
+          fi
+
+      # --------------------------------------------------------
+      # Run the test suite
+      #    BASE_URL env var is picked up by ConfigReader
+      # --------------------------------------------------------
+      - name: Run REST Assured test suite
+        run: ./mvnw test --no-transfer-progress
+        env:
+          BASE_URL: ${{ env.BASE_URL }}
+
+      # --------------------------------------------------------
+      # Upload raw Allure results as an artifact
+      #    (always upload — even on test failure — so failures
+      #     can be investigated via the report)
+      # --------------------------------------------------------
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ github.run_number }}
+          path: target/allure-results/
+          retention-days: 30
+
+      # --------------------------------------------------------
+      # Upload Surefire XML reports (for GitHub test summary)
+      # --------------------------------------------------------
+      - name: Upload Surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports-${{ github.run_number }}
+          path: target/surefire-reports/
+          retention-days: 7
+
+  # ============================================================
+  #  JOB 2 — Build & publish the Allure HTML report
+  #           Runs after the test job, always (pass or fail)
+  # ============================================================
+  report:
+    name: Publish Allure Report
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()   # always generate the report even if tests fail
+    timeout-minutes: 10
+
+    # Required to push the report to GitHub Pages
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      # --------------------------------------------------------
+      # Checkout (needed for gh-pages push)
+      # --------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------------
+      # Download the Allure results from the test job
+      # --------------------------------------------------------
+      - name: Download Allure results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-${{ github.run_number }}
+          path: target/allure-results/
+
+      # --------------------------------------------------------
+      # Set up JDK (needed to run allure-maven plugin)
+      # --------------------------------------------------------
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      # --------------------------------------------------------
+      # Generate the Allure HTML report
+      # --------------------------------------------------------
+      - name: Generate Allure HTML report
+        run: ./mvnw allure:report --no-transfer-progress
+
+      # --------------------------------------------------------
+      # Publish to GitHub Pages (gh-pages branch)
+      #    Report will be available at:
+      #    https://<org>.github.io/<repo>/
+      # --------------------------------------------------------
+      - name: Deploy report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        if: github.ref == 'refs/heads/main'   # only publish from main branch
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: target/site/allure-maven-plugin
+          publish_branch: gh-pages
+          destination_dir: allure-report
+          keep_files: false
+          commit_message: "ci: update Allure report [run #${{ github.run_number }}]"
+
+      # --------------------------------------------------------
+      # Also upload the HTML report as a downloadable artifact
+      #    (accessible from all branches, not just main)
+      # --------------------------------------------------------
+      - name: Upload HTML report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-${{ github.run_number }}
+          path: target/site/allure-maven-plugin/
+          retention-days: 30
